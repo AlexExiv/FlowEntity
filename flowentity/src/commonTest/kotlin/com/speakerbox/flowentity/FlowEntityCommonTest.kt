@@ -182,10 +182,10 @@ class FlowEntityCommonTest
     }
 
     @Test
-    fun paginatorFlowAppendsPages() = runTest {
+    fun pagerFlowAppendsPages() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val collection = EntityFlowCollection.createInt<TestEntity>(dispatcher)
-        val paginator = collection.createPaginator(perPage = 2) {
+        val pager = collection.createPager(perPage = 2) {
             if (it.page == 0)
             {
                 val pageEntities = listOf(
@@ -202,13 +202,13 @@ class FlowEntityCommonTest
             }
         }
         val values = mutableListOf<List<TestEntity>>()
-        val job = launch { paginator.collect { values.add(it) } }
+        val job = launch { pager.collect { values.add(it) } }
 
         advanceUntilIdle()
-        paginator.next()
+        pager.next()
         advanceUntilIdle()
 
-        assertEquals(PAGINATOR_END, paginator.page)
+        assertEquals(PAGER_END, pager.page)
         val expectedIds = listOf(1, 2, 3)
         assertEquals(expectedIds, values.last().map { it.id })
 

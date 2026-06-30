@@ -151,7 +151,7 @@ class EntityFlowCollectionExtraBack<Id: Any, E: Entity<Id>, EB: EntityBack<Id>, 
         fetch: PageFetchBackCallback<Id, EB, EntityCollectionExtraParamsEmpty, CollectionExtra>
     ): ArrayFlow<Id, E>
     {
-        return PaginatorFlowCollectionExtra(
+        return PagerFlowCollectionExtra(
             holder = this,
             collectionExtra = collectionExtra,
             start = start,
@@ -165,7 +165,7 @@ class EntityFlowCollectionExtraBack<Id: Any, E: Entity<Id>, EB: EntityBack<Id>, 
         fetch: PageFetchBackCallback<Id, EB, Extra, CollectionExtra>
     ): ArrayFlowExtra<Id, E, Extra>
     {
-        return PaginatorFlowCollectionExtra(
+        return PagerFlowCollectionExtra(
             holder = this,
             extra = extra,
             collectionExtra = collectionExtra,
@@ -174,13 +174,13 @@ class EntityFlowCollectionExtraBack<Id: Any, E: Entity<Id>, EB: EntityBack<Id>, 
         )
     }
 
-    fun createPaginatorBack(
+    fun createPagerBack(
         perPage: Int = 35,
         start: Boolean = true,
         fetch: PageFetchBackCallback<Id, EB, EntityCollectionExtraParamsEmpty, CollectionExtra>
-    ): PaginatorFlow<Id, E>
+    ): PagerFlow<Id, E>
     {
-        return PaginatorFlowCollectionExtra(
+        return PagerFlowCollectionExtra(
             holder = this,
             collectionExtra = collectionExtra,
             perPage = perPage,
@@ -189,14 +189,14 @@ class EntityFlowCollectionExtraBack<Id: Any, E: Entity<Id>, EB: EntityBack<Id>, 
         )
     }
 
-    fun <Extra> createPaginatorBackExtra(
+    fun <Extra> createPagerBackExtra(
         extra: Extra? = null,
         perPage: Int = 35,
         start: Boolean = true,
         fetch: PageFetchBackCallback<Id, EB, Extra, CollectionExtra>
-    ): PaginatorFlowExtra<Id, E, Extra>
+    ): PagerFlowExtra<Id, E, Extra>
     {
-        return PaginatorFlowCollectionExtra(
+        return PagerFlowCollectionExtra(
             holder = this,
             extra = extra,
             collectionExtra = collectionExtra,

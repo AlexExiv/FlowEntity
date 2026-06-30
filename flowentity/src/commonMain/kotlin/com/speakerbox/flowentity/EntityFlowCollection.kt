@@ -449,7 +449,7 @@ open class EntityFlowCollectionExtra<Id: Any, E: Entity<Id>, CollectionExtra>(
         fetch: PageFetchCallback<Id, E, EntityCollectionExtraParamsEmpty, CollectionExtra>
     ): ArrayFlow<Id, E>
     {
-        return PaginatorFlowCollectionExtra(
+        return PagerFlowCollectionExtra(
             holder = this,
             collectionExtra = collectionExtra,
             start = start,
@@ -463,7 +463,7 @@ open class EntityFlowCollectionExtra<Id: Any, E: Entity<Id>, CollectionExtra>(
         fetch: PageFetchCallback<Id, E, Extra, CollectionExtra>
     ): ArrayFlowExtra<Id, E, Extra>
     {
-        return PaginatorFlowCollectionExtra(
+        return PagerFlowCollectionExtra(
             holder = this,
             extra = extra,
             collectionExtra = collectionExtra,
@@ -472,13 +472,13 @@ open class EntityFlowCollectionExtra<Id: Any, E: Entity<Id>, CollectionExtra>(
         )
     }
 
-    fun createPaginator(
+    fun createPager(
         perPage: Int = 35,
         start: Boolean = true,
         fetch: PageFetchCallback<Id, E, EntityCollectionExtraParamsEmpty, CollectionExtra>
-    ): PaginatorFlow<Id, E>
+    ): PagerFlow<Id, E>
     {
-        return PaginatorFlowCollectionExtra(
+        return PagerFlowCollectionExtra(
             holder = this,
             collectionExtra = collectionExtra,
             perPage = perPage,
@@ -487,14 +487,14 @@ open class EntityFlowCollectionExtra<Id: Any, E: Entity<Id>, CollectionExtra>(
         )
     }
 
-    fun <Extra> createPaginatorExtra(
+    fun <Extra> createPagerExtra(
         extra: Extra? = null,
         perPage: Int = 35,
         start: Boolean = true,
         fetch: PageFetchCallback<Id, E, Extra, CollectionExtra>
-    ): PaginatorFlowExtra<Id, E, Extra>
+    ): PagerFlowExtra<Id, E, Extra>
     {
-        return PaginatorFlowCollectionExtra(
+        return PagerFlowCollectionExtra(
             holder = this,
             extra = extra,
             collectionExtra = collectionExtra,
