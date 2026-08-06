@@ -47,6 +47,8 @@ abstract class EntityFlow<Id: Any, E: Entity<Id>, EL>(
     var disposed = false
         private set
 
+    var singleton = false
+
     init
     {
         holder.add(this)
@@ -103,9 +105,7 @@ abstract class EntityFlow<Id: Any, E: Entity<Id>, EL>(
     {
         collectorsMutex.withLock {
             if (disposed)
-            {
-                throw IllegalStateException("Trying to collect EntityFlow that has been disposed already.")
-            }
+                throw IllegalStateException("Trying to collect EntityFlow that has been disposed already. Maybe you forgot to make it singleton?")
 
             _collectors.value += 1
         }
@@ -118,7 +118,7 @@ abstract class EntityFlow<Id: Any, E: Entity<Id>, EL>(
         collectorsMutex.withLock {
             val count = (_collectors.value - 1).coerceAtLeast(0)
             _collectors.value = count
-            shouldDispose = count == 0
+            shouldDispose = count == 0 && !singleton
         }
 
         if (shouldDispose)

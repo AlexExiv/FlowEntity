@@ -120,6 +120,63 @@ class FlowEntityCommonTest
     }
 
     @Test
+    fun singletonFlowCanBeCollectedAgainAfterLastCollector() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val collection = EntityFlowCollection.createInt<TestEntity>(dispatcher)
+        collection.singleFetchCallback = { TestEntity(id = it.id ?: 0, value = "one") }
+
+        val single = collection.createSingle(id = 1)
+        single.singleton = true
+        val firstValues = mutableListOf<TestEntity?>()
+        val firstJob = launch { single.collect { firstValues.add(it) } }
+
+        advanceUntilIdle()
+        firstJob.cancelAndJoin()
+        advanceUntilIdle()
+
+        assertEquals(0, single.collectors.value)
+        assertFalse(single.disposed)
+
+        val secondValues = mutableListOf<TestEntity?>()
+        val secondJob = launch { single.collect { secondValues.add(it) } }
+
+        advanceUntilIdle()
+
+        assertEquals(1, single.collectors.value)
+        val expectedEntity = TestEntity(id = 1, value = "one")
+        assertEquals(expectedEntity, firstValues.last())
+        assertEquals(expectedEntity, secondValues.last())
+
+        secondJob.cancelAndJoin()
+
+        val array = collection.createKeyArray(ids = listOf(2)) {
+            it.ids.map { TestEntity(id = it, value = "array-$it") }
+        }
+        array.singleton = true
+        val arrayFirstValues = mutableListOf<List<TestEntity>>()
+        val arrayFirstJob = launch { array.collect { arrayFirstValues.add(it) } }
+
+        advanceUntilIdle()
+        arrayFirstJob.cancelAndJoin()
+        advanceUntilIdle()
+
+        assertEquals(0, array.collectors.value)
+        assertFalse(array.disposed)
+
+        val arraySecondValues = mutableListOf<List<TestEntity>>()
+        val arraySecondJob = launch { array.collect { arraySecondValues.add(it) } }
+
+        advanceUntilIdle()
+
+        assertEquals(1, array.collectors.value)
+        val expectedArray = listOf(TestEntity(id = 2, value = "array-2"))
+        assertEquals(expectedArray, arrayFirstValues.last())
+        assertEquals(expectedArray, arraySecondValues.last())
+
+        arraySecondJob.cancelAndJoin()
+    }
+
+    @Test
     fun arrayKeyFlowUsesSharedCacheAndFetchesOnlyMissingIds() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val collection = EntityFlowCollection.createInt<TestEntity>(dispatcher)
