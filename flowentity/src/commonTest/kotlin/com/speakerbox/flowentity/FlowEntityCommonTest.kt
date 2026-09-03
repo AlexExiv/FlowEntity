@@ -1,12 +1,14 @@
 package com.speakerbox.flowentity
 
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.runCurrent
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -236,6 +238,93 @@ class FlowEntityCommonTest
 
         arrayJob.cancelAndJoin()
         singleJob.cancelAndJoin()
+    }
+
+    @Test
+    fun singleFlowUsesLatestRequest() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val collection = EntityFlowCollection.createInt<TestEntity>(dispatcher)
+        val single = collection.createSingle(id = 1) {
+            if (it.id == 1)
+            {
+                delay(1000)
+                TestEntity(id = 1, value = "old")
+            }
+            else
+            {
+                TestEntity(id = 2, value = "new")
+            }
+        }
+        val values = mutableListOf<TestEntity?>()
+        val job = launch { single.collect { values.add(it) } }
+
+        runCurrent()
+        single.id = 2
+        runCurrent()
+        advanceUntilIdle()
+
+        val expectedEntity = TestEntity(id = 2, value = "new")
+        assertEquals(expectedEntity, values.last())
+
+        job.cancelAndJoin()
+    }
+
+    @Test
+    fun arrayKeyFlowUsesLatestRequest() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val collection = EntityFlowCollection.createInt<TestEntity>(dispatcher)
+        val array = collection.createKeyArray(ids = listOf(1)) { params ->
+            if (params.ids == listOf(1))
+            {
+                delay(1000)
+                listOf(TestEntity(id = 1, value = "old"))
+            }
+            else
+            {
+                listOf(TestEntity(id = 2, value = "new"))
+            }
+        }
+        val values = mutableListOf<List<TestEntity>>()
+        val job = launch { array.collect { values.add(it) } }
+
+        runCurrent()
+        array.ids = listOf(2)
+        runCurrent()
+        advanceUntilIdle()
+
+        val expectedEntities = listOf(TestEntity(id = 2, value = "new"))
+        assertEquals(expectedEntities, values.last())
+
+        job.cancelAndJoin()
+    }
+
+    @Test
+    fun pagerFlowUsesLatestRequest() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val collection = EntityFlowCollection.createInt<TestEntity>(dispatcher)
+        val pager = collection.createPager(perPage = 2) {
+            if (it.resetCache)
+            {
+                listOf(TestEntity(id = 2, value = "new"))
+            }
+            else
+            {
+                delay(1000)
+                listOf(TestEntity(id = 1, value = "old"))
+            }
+        }
+        val values = mutableListOf<List<TestEntity>>()
+        val job = launch { pager.collect { values.add(it) } }
+
+        runCurrent()
+        pager.refresh(resetCache = true)
+        runCurrent()
+        advanceUntilIdle()
+
+        val expectedEntities = listOf(TestEntity(id = 2, value = "new"))
+        assertEquals(expectedEntities, values.last())
+
+        job.cancelAndJoin()
     }
 
     @Test

@@ -1,5 +1,11 @@
 package com.speakerbox.flowentity
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
 open class ArrayKeyFlowExtra<Id: Any, E: Entity<Id>, Extra>(
@@ -82,6 +88,7 @@ open class ArrayKeyFlowExtra<Id: Any, E: Entity<Id>, Extra>(
     }
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class ArrayKeyFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra>(
     holder: EntityFlowCollectionExtra<Id, E, CollectionExtra>,
     ids: List<Id>,
@@ -91,16 +98,14 @@ class ArrayKeyFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra
     private val fetch: ArrayFetchCallback<Id, E, Extra, CollectionExtra>
 ) : ArrayKeyFlowExtra<Id, E, Extra>(holder, ids, extra)
 {
+    private val rxKeys = Channel<KeyParams<Id, Extra, CollectionExtra>>(capacity = Channel.BUFFERED)
+
     override var ids: List<Id>
         get() = super.ids
         set(value)
         {
             super.ids = value
-            val params = KeyParams(
-                ids = value,
-                extra = extra,
-                collectionExtra = collectionExtra
-            )
+            val params = KeyParams(ids = value, extra = extra, collectionExtra = collectionExtra)
             request(params)
         }
 
@@ -126,6 +131,49 @@ class ArrayKeyFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra
     {
         updateLoading(if (start) Loading.FirstLoading else Loading.None)
 
+        rxKeys
+            .receiveAsFlow()
+            .onEach {
+                if (it.ids.isEmpty())
+                {
+                    updateLoading(Loading.None)
+                }
+                else
+                {
+                    updateLoading(if (it.first) Loading.FirstLoading else Loading.Loading, null)
+                }
+            }
+            .mapLatest {
+                if (it.ids.isEmpty())
+                {
+                    listOf()
+                }
+                else
+                {
+                    val value = try
+                    {
+                        fetchElements(params = it)
+                    }
+                    catch (throwable: Throwable)
+                    {
+                        if (throwable is CancellationException)
+                        {
+                            throw throwable
+                        }
+
+                        updateLoading(Loading.None, throwable)
+                        listOf()
+                    }
+
+                    holder.requestForCombine(source = uuid, entities = value)
+                }
+            }
+            .onEach {
+                updateLoading(Loading.None)
+                setEntities(entities = it)
+            }
+            .launchInNow(scope)
+
         if (start)
         {
             val params = KeyParams(
@@ -134,7 +182,7 @@ class ArrayKeyFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra
                 extra = extra,
                 collectionExtra = collectionExtra
             )
-            request(params)
+            rxKeys.trySend(params)
         }
     }
 
@@ -148,6 +196,7 @@ class ArrayKeyFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra
     override suspend fun refreshNow(resetCache: Boolean, extra: Extra?)
     {
         super.refreshNow(resetCache = resetCache, extra = extra)
+
         val params = KeyParams(
             refreshing = true,
             resetCache = resetCache,
@@ -155,6 +204,7 @@ class ArrayKeyFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra
             extra = this.extra,
             collectionExtra = collectionExtra
         )
+
         request(params)
     }
 
@@ -167,30 +217,7 @@ class ArrayKeyFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra
 
     private fun request(params: KeyParams<Id, Extra, CollectionExtra>)
     {
-        if (params.ids.isEmpty())
-        {
-            updateLoading(Loading.None)
-            setEntities(entities = listOf())
-            return
-        }
-
-        updateLoading(if (params.first) Loading.FirstLoading else Loading.Loading, null)
-
-        scope.launch {
-            val value = try
-            {
-                fetchElements(params = params)
-            }
-            catch (throwable: Throwable)
-            {
-                updateLoading(Loading.None, throwable)
-                listOf()
-            }
-
-            val combined = holder.requestForCombine(source = uuid, entities = value)
-            updateLoading(Loading.None)
-            setEntities(entities = combined)
-        }
+        rxKeys.trySend(params)
     }
 
     private suspend fun fetchElements(params: KeyParams<Id, Extra, CollectionExtra>): List<E>
@@ -212,6 +239,7 @@ class ArrayKeyFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra
         val missingIds = params.ids.filter { id ->
             holder.sharedEntities[id] == null && entities.firstOrNull { it.id == id } == null
         }
+
         val fetched = fetch(params.copy(ids = missingIds))
         val existingMap = existing.toEntitiesMap()
         val fetchedMap = fetched.toEntitiesMap()

@@ -1,7 +1,13 @@
 package com.speakerbox.flowentity
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class SingleFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra>(
     holder: EntityFlowCollectionExtra<Id, E, CollectionExtra>,
     id: Id?,
@@ -11,6 +17,8 @@ class SingleFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra>(
     private val fetch: SingleFetchCallback<Id, E, Extra, CollectionExtra>
 ) : SingleFlowExtra<Id, E, Extra>(holder, id, extra)
 {
+    private val rxRefresh = MutableSharedFlow<SingleParams<Id, E, Extra, CollectionExtra>>(replay = 1, extraBufferCapacity = 64)
+    private var lastParams: SingleParams<Id, E, Extra, CollectionExtra>? = null
     private var started = false
 
     override var id: Id?
@@ -22,8 +30,8 @@ class SingleFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra>(
                 resetCache = true,
                 first = true,
                 id = value,
-                extra = extra,
-                collectionExtra = collectionExtra
+                extra = lastParams?.extra,
+                collectionExtra = lastParams?.collectionExtra
             )
             request(params)
         }
@@ -59,6 +67,54 @@ class SingleFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra>(
     {
         updateLoading(if (start) Loading.FirstLoading else Loading.None)
 
+        rxRefresh
+            .onEach {
+                updateLoading(if (it.first) Loading.FirstLoading else Loading.Loading, null)
+                if (it.first)
+                {
+                    setState(State.Initializing)
+                }
+            }
+            .mapLatest {
+                val fetched = try
+                {
+                    fetch(it)
+                }
+                catch (throwable: Throwable)
+                {
+                    if (throwable is CancellationException)
+                    {
+                        throw throwable
+                    }
+
+                    if (throwable is EntityFetchExceptionInterface)
+                    {
+                        setState(State.NotFound)
+                    }
+                    else
+                    {
+                        updateLoading(Loading.None, throwable)
+                    }
+
+                    null
+                }
+
+                if (fetched == null)
+                {
+                    null
+                }
+                else
+                {
+                    holder.requestForCombine(source = uuid, entity = fetched)
+                }
+            }
+            .onEach {
+                updateLoading(Loading.None)
+                setState(if (it == null) State.NotFound else State.Ready)
+                publish(it)
+            }
+            .launchInNow(scope)
+
         if (start)
         {
             started = true
@@ -83,6 +139,7 @@ class SingleFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra>(
     override suspend fun refreshNow(resetCache: Boolean, extra: Extra?)
     {
         super.refreshNow(resetCache = resetCache, extra = extra)
+
         val params: SingleParams<Id, E, Extra, CollectionExtra> = SingleParams(
             refreshing = true,
             resetCache = resetCache,
@@ -92,6 +149,7 @@ class SingleFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra>(
             extra = this.extra,
             collectionExtra = collectionExtra
         )
+
         request(params)
         started = true
     }
@@ -105,44 +163,7 @@ class SingleFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra>(
 
     private fun request(params: SingleParams<Id, E, Extra, CollectionExtra>)
     {
-        updateLoading(if (params.first) Loading.FirstLoading else Loading.Loading, null)
-        if (params.first)
-        {
-            setState(State.Initializing)
-        }
-
-        scope.launch {
-            val fetched = try
-            {
-                fetch(params)
-            }
-            catch (throwable: Throwable)
-            {
-                if (throwable is EntityFetchExceptionInterface)
-                {
-                    setState(State.NotFound)
-                }
-                else
-                {
-                    updateLoading(Loading.None, throwable)
-                }
-                publish(null)
-                return@launch
-            }
-
-            if (fetched == null)
-            {
-                updateLoading(Loading.None)
-                setState(State.NotFound)
-                publish(null)
-            }
-            else
-            {
-                val value = holder.requestForCombine(source = uuid, entity = fetched)
-                updateLoading(Loading.None)
-                setState(State.Ready)
-                publish(value)
-            }
-        }
+        lastParams = params
+        rxRefresh.tryEmit(params)
     }
 }
