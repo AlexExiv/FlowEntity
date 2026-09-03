@@ -57,10 +57,9 @@ class SingleFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra>(
         }
 
         started = !refresh
+
         if (refresh)
-        {
             refresh()
-        }
     }
 
     init
@@ -118,6 +117,7 @@ class SingleFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra>(
         if (start)
         {
             started = true
+
             val params: SingleParams<Id, E, Extra, CollectionExtra> = SingleParams(
                 first = true,
                 id = id,
@@ -125,6 +125,7 @@ class SingleFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra>(
                 extra = extra,
                 collectionExtra = collectionExtra
             )
+
             request(params)
         }
     }

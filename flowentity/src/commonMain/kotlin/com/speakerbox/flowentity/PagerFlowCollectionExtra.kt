@@ -79,6 +79,7 @@ class PagerFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra>(
         if (start)
         {
             started = true
+
             val params: PageParams<Id, Extra, CollectionExtra> = PageParams(
                 page = 0,
                 perPage = perPage,
@@ -86,6 +87,7 @@ class PagerFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra>(
                 extra = extra,
                 collectionExtra = collectionExtra
             )
+
             rxPage.trySend(params)
         }
     }
@@ -100,6 +102,7 @@ class PagerFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra>(
     override suspend fun refreshNow(resetCache: Boolean, extra: Extra?)
     {
         super.refreshNow(resetCache = resetCache, extra = extra)
+
         val params: PageParams<Id, Extra, CollectionExtra> = PageParams(
             page = page + 1,
             perPage = perPage,
@@ -109,7 +112,8 @@ class PagerFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra>(
             extra = this.extra,
             collectionExtra = collectionExtra
         )
-        request(params)
+
+        rxPage.trySend(params)
         started = true
     }
 
@@ -135,16 +139,11 @@ class PagerFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra>(
                 extra = extra,
                 collectionExtra = collectionExtra
             )
-            request(params)
+            rxPage.trySend(params)
         }
         else
         {
             refresh()
         }
-    }
-
-    private fun request(params: PageParams<Id, Extra, CollectionExtra>)
-    {
-        rxPage.trySend(params)
     }
 }

@@ -41,6 +41,7 @@ open class ArrayFlowExtra<Id: Any, E: Entity<Id>, Extra>(
     override fun update(source: String, entity: E)
     {
         val index = _entities.indexOfFirst { it.id == entity.id }
+
         if (index != -1 && source != uuid)
         {
             _entities[index] = entity
@@ -63,9 +64,7 @@ open class ArrayFlowExtra<Id: Any, E: Entity<Id>, Extra>(
             }
 
             if (was)
-            {
                 publish()
-            }
         }
     }
 
@@ -98,9 +97,7 @@ open class ArrayFlowExtra<Id: Any, E: Entity<Id>, Extra>(
 
     override fun update(entities: Map<Id, E>, operations: Map<Id, UpdateOperation>)
     {
-        if (operations.values.contains(UpdateOperation.Insert) ||
-            updatePolicy == UpdatePolicy.Reload && operations.values.contains(UpdateOperation.Update)
-        )
+        if (operations.values.contains(UpdateOperation.Insert) || updatePolicy == UpdatePolicy.Reload && operations.values.contains(UpdateOperation.Update))
         {
             refresh(extra = extra)
         }
@@ -141,6 +138,7 @@ open class ArrayFlowExtra<Id: Any, E: Entity<Id>, Extra>(
     fun setEntity(entity: E)
     {
         val index = _entities.indexOfFirst { it.id == entity.id }
+
         if (index != -1)
         {
             _entities[index] = entity
@@ -180,15 +178,15 @@ open class ArrayFlowExtra<Id: Any, E: Entity<Id>, Extra>(
     {
         this.extra = extra ?: this.extra
         page = -1
+
         if (perPage != ARRAY_PER_PAGE || resetCache)
-        {
             setEntities(entities = listOf())
-        }
     }
 
     override suspend fun collect(collector: FlowCollector<List<E>>)
     {
         attachCollector()
+
         try
         {
             data.collect(collector)

@@ -106,7 +106,7 @@ class ArrayKeyFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra
         {
             super.ids = value
             val params = KeyParams(ids = value, extra = extra, collectionExtra = collectionExtra)
-            request(params)
+            rxKeys.trySend(params)
         }
 
     constructor(
@@ -182,6 +182,7 @@ class ArrayKeyFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra
                 extra = extra,
                 collectionExtra = collectionExtra
             )
+
             rxKeys.trySend(params)
         }
     }
@@ -205,7 +206,7 @@ class ArrayKeyFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra
             collectionExtra = collectionExtra
         )
 
-        request(params)
+        rxKeys.trySend(params)
     }
 
     override fun refreshData(resetCache: Boolean, data: Any?)
@@ -215,26 +216,17 @@ class ArrayKeyFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra
         refresh(resetCache = resetCache, extra = extra)
     }
 
-    private fun request(params: KeyParams<Id, Extra, CollectionExtra>)
-    {
-        rxKeys.trySend(params)
-    }
-
     private suspend fun fetchElements(params: KeyParams<Id, Extra, CollectionExtra>): List<E>
     {
         if (params.refreshing)
-        {
             return fetch(params)
-        }
 
         val existing = params.ids.mapNotNull { id ->
             holder.sharedEntities[id] ?: entities.firstOrNull { it.id == id }
         }
 
         if (existing.size == params.ids.size)
-        {
             return existing
-        }
 
         val missingIds = params.ids.filter { id ->
             holder.sharedEntities[id] == null && entities.firstOrNull { it.id == id } == null

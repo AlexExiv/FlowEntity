@@ -90,9 +90,7 @@ abstract class EntityFlow<Id: Any, E: Entity<Id>, EL>(
     open fun dispose()
     {
         if (disposed)
-        {
             return
-        }
 
         disposed = true
         scope.cancel()
@@ -122,9 +120,7 @@ abstract class EntityFlow<Id: Any, E: Entity<Id>, EL>(
         }
 
         if (shouldDispose)
-        {
             dispose()
-        }
     }
 
     internal fun updateLoading(loading: Loading)
@@ -135,10 +131,10 @@ abstract class EntityFlow<Id: Any, E: Entity<Id>, EL>(
     internal fun updateLoading(loading: Loading, error: Throwable?)
     {
         _loading.value = loading
+
         if (error != null)
-        {
             _errors.tryEmit(error)
-        }
+
         _errorState.value = error
     }
 }

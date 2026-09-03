@@ -341,6 +341,7 @@ open class EntityFlowCollectionExtra<Id: Any, E: Entity<Id>, CollectionExtra>(
         val fetch = requireNotNull(singleFetchCallback) {
             "To create SingleFlow with default fetch method you must specify singleFetchCallback before"
         }
+
         val entity = if (id == null) null else _sharedEntities[id]
         return if (entity == null)
             createSingle(id = id, start = start, fetch = fetch)
