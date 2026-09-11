@@ -22,6 +22,8 @@ captures
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
+swift/FlowEntityPackage/.build/
+swift/FlowEntityPackage/FlowEntity.xcframework/
 
 # Log/OS Files
 *.log

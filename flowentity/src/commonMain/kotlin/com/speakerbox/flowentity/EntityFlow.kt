@@ -12,13 +12,15 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.experimental.ExperimentalObjCRefinement
+import kotlin.native.HiddenFromObjC
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
-@OptIn(ExperimentalUuidApi::class)
+@OptIn(ExperimentalUuidApi::class, ExperimentalObjCRefinement::class)
 abstract class EntityFlow<Id: Any, E: Entity<Id>, EL>(
     protected val holder: EntityFlowCollectionExtra<Id, E, *>
-) : Flow<EL>
+) : Flow<EL>, SwiftObservable
 {
     enum class Loading
     {
@@ -39,10 +41,22 @@ abstract class EntityFlow<Id: Any, E: Entity<Id>, EL>(
 
     private val collectorsMutex = Mutex()
 
+    @HiddenFromObjC
     val loading: StateFlow<Loading> = _loading.asStateFlow()
+
+    @HiddenFromObjC
     val errors: SharedFlow<Throwable> = _errors.asSharedFlow()
+
+    @HiddenFromObjC
     val errorState: StateFlow<Throwable?> = _errorState.asStateFlow()
+
+    @HiddenFromObjC
     val collectors: StateFlow<Int> = _collectors.asStateFlow()
+
+    val loadingObservable: FlowObservable<Loading> = FlowObservable(_loading.asStateFlow(), scope)
+    val errorsObservable: FlowObservable<Throwable> = FlowObservable(_errors.asSharedFlow(), scope)
+    val errorStateObservable: FlowObservable<Throwable?> = FlowObservable(_errorState.asStateFlow(), scope)
+    val collectorsObservable: FlowObservable<Int> = FlowObservable(_collectors.asStateFlow(), scope)
 
     var disposed = false
         private set
@@ -98,6 +112,12 @@ abstract class EntityFlow<Id: Any, E: Entity<Id>, EL>(
 
         EntityCollectionConfig.log("EntityFlow has been disposed. UUID - $uuid")
     }
+
+    fun watch(onValue: (EL) -> Unit, onError: (Throwable) -> Unit): FlowSubscription =
+        FlowObservable(this, scope).watch(onValue = onValue, onError = onError)
+
+    override fun watchAny(onValue: (Any?) -> Unit, onError: (Throwable) -> Unit): FlowSubscription =
+        watch(onValue = onValue, onError = onError)
 
     protected suspend fun attachCollector()
     {
