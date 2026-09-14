@@ -146,7 +146,7 @@ val updateSwiftPackage = tasks.register<UpdateSwiftPackageTask>("updateSwiftPack
 
     archive.set(zipReleaseXCFramework.flatMap { it.archiveFile })
     version.set(libraryVersion)
-    packageFile.set(layout.projectDirectory.file("../swift/FlowEntityPackage/Package.swift"))
+    packageFile.set(layout.projectDirectory.file("../Package.swift"))
 }
 
 mavenPublishing {
