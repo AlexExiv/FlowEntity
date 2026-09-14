@@ -2,6 +2,9 @@
 
 import PackageDescription
 
+let flowEntityVersion = "0.1.3"
+let flowEntityChecksum = "85b53fca15fecbef414022de0bd893fbbd596400144216d061a45994586f5ee7"
+
 let package = Package(
     name: "FlowEntityPackage",
     platforms: [
@@ -16,7 +19,8 @@ let package = Package(
     targets: [
         .binaryTarget(
             name: "FlowEntity",
-            path: "FlowEntity.xcframework"
+            url: "https://repo1.maven.org/maven2/io/github/alexexiv/flowentity/\(flowEntityVersion)/flowentity-\(flowEntityVersion)-ios-xcframework.zip",
+            checksum: flowEntityChecksum
         ),
         .target(
             name: "FlowEntityCombine",
