@@ -71,4 +71,44 @@ public extension SwiftObservable
             .map { $0 as? Value }
             .eraseToAnyPublisher()
     }
+
+    func asPublisherNever() -> AnyPublisher<Any?, Never>
+    {
+        Deferred {
+            let subject = PassthroughSubject<Any?, Never>()
+            var subscription: FlowSubscription?
+
+            subscription = self.watchAny(
+                onValue: {
+                    subject.send( $0 )
+                },
+                onError: { _ in
+                    subject.send( completion: .finished )
+                }
+            )
+
+            return subject
+                .handleEvents(
+                    receiveCancel: {
+                        subscription?.cancel()
+                    }
+                )
+                .eraseToAnyPublisher()
+        }
+        .eraseToAnyPublisher()
+    }
+
+    func asPublisherNever<Value>( _ type: Value.Type ) -> AnyPublisher<Value, Never>
+    {
+        return asPublisherNever()
+            .compactMap { $0 as? Value }
+            .eraseToAnyPublisher()
+    }
+
+    func asOptionalPublisherNever<Value>( _ type: Value.Type ) -> AnyPublisher<Value?, Never>
+    {
+        return asPublisherNever()
+            .map { $0 as? Value }
+            .eraseToAnyPublisher()
+    }
 }
