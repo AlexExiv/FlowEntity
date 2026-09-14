@@ -42,21 +42,21 @@ abstract class EntityFlow<Id: Any, E: Entity<Id>, EL>(
     private val collectorsMutex = Mutex()
 
     @HiddenFromObjC
-    val loading: StateFlow<Loading> = _loading.asStateFlow()
+    internal val loadingInternal: StateFlow<Loading> = _loading.asStateFlow()
 
     @HiddenFromObjC
-    val errors: SharedFlow<Throwable> = _errors.asSharedFlow()
+    internal val errorsInternal: SharedFlow<Throwable> = _errors.asSharedFlow()
 
     @HiddenFromObjC
-    val errorState: StateFlow<Throwable?> = _errorState.asStateFlow()
+    internal val errorStateInternal: StateFlow<Throwable?> = _errorState.asStateFlow()
 
     @HiddenFromObjC
-    val collectors: StateFlow<Int> = _collectors.asStateFlow()
+    internal val collectorsInternal: StateFlow<Int> = _collectors.asStateFlow()
 
-    val loadingObservable: FlowObservable<Loading> = FlowObservable(_loading.asStateFlow(), scope)
-    val errorsObservable: FlowObservable<Throwable> = FlowObservable(_errors.asSharedFlow(), scope)
-    val errorStateObservable: FlowObservable<Throwable?> = FlowObservable(_errorState.asStateFlow(), scope)
-    val collectorsObservable: FlowObservable<Int> = FlowObservable(_collectors.asStateFlow(), scope)
+    val loading: ObservableStateFlow<Loading> = loadingInternal.toObservable(scope = scope)
+    val errors: ObservableSharedFlow<Throwable> = errorsInternal.toObservable(scope = scope)
+    val errorState: ObservableStateFlow<Throwable?> = errorStateInternal.toObservable(scope = scope)
+    val collectors: ObservableStateFlow<Int> = collectorsInternal.toObservable(scope = scope)
 
     var disposed = false
         private set
@@ -114,7 +114,7 @@ abstract class EntityFlow<Id: Any, E: Entity<Id>, EL>(
     }
 
     fun watch(onValue: (EL) -> Unit, onError: (Throwable) -> Unit): FlowSubscription =
-        FlowObservable(this, scope).watch(onValue = onValue, onError = onError)
+        ObservableFlow(this, scope).watch(onValue = onValue, onError = onError)
 
     override fun watchAny(onValue: (Any?) -> Unit, onError: (Throwable) -> Unit): FlowSubscription =
         watch(onValue = onValue, onError = onError)
