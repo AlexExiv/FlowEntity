@@ -2,8 +2,8 @@
 
 import PackageDescription
 
-let flowEntityVersion = "0.1.6"
-let flowEntityChecksum = "5b5a6d986102889306d2b8096a8e9f84482148fa3269452af6cb0477be876bd4"
+let flowEntityVersion = "0.1.7"
+let flowEntityChecksum = "5e7e1d37d6671ec30a790b7a5582d8bcf05dd3dea569c3ab1ac5eacdf8ed95b9"
 
 let package = Package(
     name: "FlowEntityPackage",
