@@ -35,7 +35,7 @@ open class ArrayFlowExtra<Id: Any, E: Entity<Id>, Extra>(
 
     operator fun get(index: Int): SingleFlow<Id, E>
     {
-        return holder.createSingle(initial = _entities[index])
+        return holder().createSingle(initial = _entities[index])
     }
 
     override fun update(source: String, entity: E)

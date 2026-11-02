@@ -39,13 +39,9 @@ class EntityFlowCollectionExtraBack<Id: Any, E: Entity<Id>, EB: EntityBack<Id>, 
 
             singleFetchCallback = {
                 if (it.id == null)
-                {
                     null
-                }
                 else
-                {
                     value.get(it.id)?.let { map(it) }
-                }
             }
             arrayFetchCallback = { value.get(it.ids).map { map(it) } }
             allArrayFetchCallback = if (value is EntityAllRepositoryInterface<Id, EB>)
@@ -63,21 +59,12 @@ class EntityFlowCollectionExtraBack<Id: Any, E: Entity<Id>, EB: EntityBack<Id>, 
                     val entities = it.filter { it.entity != null }
 
                     if (ids.size == 1)
-                    {
                         commitById(id = ids[0].id, operation = ids[0].operation)
-                    }
                     else if (ids.size > 1)
-                    {
                         commitByIds(ids = ids.map { it.id }, operations = ids.map { it.operation })
-                    }
 
                     if (entities.isNotEmpty())
-                    {
-                        commit(
-                            entities = entities.map { map(it.entity!!) },
-                            operations = entities.map { it.operation }
-                        )
-                    }
+                        commit(entities = entities.map { map(it.entity!!) }, operations = entities.map { it.operation })
                 }
             }
         }

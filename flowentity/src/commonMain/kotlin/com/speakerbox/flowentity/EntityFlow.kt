@@ -19,7 +19,7 @@ import kotlin.uuid.Uuid
 
 @OptIn(ExperimentalUuidApi::class, ExperimentalObjCRefinement::class)
 abstract class EntityFlow<Id: Any, E: Entity<Id>, EL>(
-    protected val holder: EntityFlowCollectionExtra<Id, E, *>
+    collection: EntityFlowCollectionExtra<Id, E, *>
 ) : Flow<EL>, SwiftObservable
 {
     enum class Loading
@@ -36,7 +36,8 @@ abstract class EntityFlow<Id: Any, E: Entity<Id>, EL>(
     private val _errorState = MutableStateFlow<Throwable?>(null)
     private val _collectors = MutableStateFlow(0)
 
-    protected val scope = CoroutineScope(SupervisorJob() + holder.dispatcher)
+    private val holderReference = FlowWeakReference(collection)
+    protected val scope = CoroutineScope(SupervisorJob() + collection.dispatcher)
     protected val uuid = Uuid.random().toString()
 
     private val collectorsMutex = Mutex()
@@ -65,7 +66,7 @@ abstract class EntityFlow<Id: Any, E: Entity<Id>, EL>(
 
     init
     {
-        holder.add(this)
+        collection.add(this)
     }
 
     open fun update(source: String, entity: E)
@@ -108,7 +109,7 @@ abstract class EntityFlow<Id: Any, E: Entity<Id>, EL>(
 
         disposed = true
         scope.cancel()
-        holder.remove(this)
+        holderReference.get()?.remove(this)
 
         EntityCollectionConfig.log("EntityFlow has been disposed. UUID - $uuid")
     }
@@ -118,6 +119,13 @@ abstract class EntityFlow<Id: Any, E: Entity<Id>, EL>(
 
     override fun watchAny(onValue: (Any?) -> Unit, onError: (Throwable) -> Unit): FlowSubscription =
         watch(onValue = onValue, onError = onError)
+
+    protected fun holder(): EntityFlowCollectionExtra<Id, E, *>
+    {
+        return requireNotNull(holderReference.get()) {
+            "Trying to use EntityFlow that has been disposed already"
+        }
+    }
 
     protected suspend fun attachCollector()
     {

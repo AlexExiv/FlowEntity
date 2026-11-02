@@ -31,6 +31,15 @@ data class PageParams<Id: Any, Extra, CollectionExtra>(
     val collectionExtra: CollectionExtra? = null
 )
 
+data class ValueParams<Value: Any, Extra, CollectionExtra>(
+    val refreshing: Boolean = false,
+    val resetCache: Boolean = false,
+    val first: Boolean = false,
+    val last: Value? = null,
+    val extra: Extra? = null,
+    val collectionExtra: CollectionExtra? = null
+)
+
 typealias SingleFetchCallback<Id, E, Extra, CollectionExtra> =
     suspend (SingleParams<Id, E, Extra, CollectionExtra>) -> E?
 
@@ -39,3 +48,6 @@ typealias ArrayFetchCallback<Id, E, Extra, CollectionExtra> =
 
 typealias PageFetchCallback<Id, E, Extra, CollectionExtra> =
     suspend (PageParams<Id, Extra, CollectionExtra>) -> List<E>
+
+typealias ValueFetchCallback<Value, Extra, CollectionExtra> =
+    suspend (ValueParams<Value, Extra, CollectionExtra>) -> Value?

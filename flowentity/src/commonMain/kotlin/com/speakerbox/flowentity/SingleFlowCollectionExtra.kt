@@ -26,6 +26,7 @@ class SingleFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra>(
         set(value)
         {
             super.id = value
+
             val params: SingleParams<Id, E, Extra, CollectionExtra> = SingleParams(
                 resetCache = true,
                 first = true,
@@ -33,6 +34,7 @@ class SingleFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra>(
                 extra = lastParams?.extra,
                 collectionExtra = lastParams?.collectionExtra
             )
+
             request(params)
         }
 
@@ -82,30 +84,20 @@ class SingleFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra>(
                 catch (throwable: Throwable)
                 {
                     if (throwable is CancellationException)
-                    {
                         throw throwable
-                    }
 
                     if (throwable is EntityFetchExceptionInterface)
-                    {
                         setState(State.NotFound)
-                    }
                     else
-                    {
                         updateLoading(Loading.None, throwable)
-                    }
 
                     null
                 }
 
                 if (fetched == null)
-                {
                     null
-                }
                 else
-                {
                     holder.requestForCombine(source = uuid, entity = fetched)
-                }
             }
             .onEach {
                 updateLoading(Loading.None)
@@ -132,9 +124,7 @@ class SingleFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra>(
 
     override fun refresh(resetCache: Boolean, extra: Extra?)
     {
-        scope.launch {
-            refreshNow(resetCache = resetCache, extra = extra)
-        }
+        scope.launch { refreshNow(resetCache = resetCache, extra = extra) }
     }
 
     override suspend fun refreshNow(resetCache: Boolean, extra: Extra?)

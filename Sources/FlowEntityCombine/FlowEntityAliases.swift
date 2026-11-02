@@ -8,6 +8,24 @@ public typealias EntityBackInt = EntityBack
 public typealias EntityBackLong = EntityBack
 public typealias EntityBackString = EntityBack
 
+public typealias ValueFlow<Value: AnyObject> =
+    ValueFlowExtra<Value, EntityCollectionExtraParamsEmpty>
+
+public typealias ValueFlowExtraInt<Extra: AnyObject> =
+    ValueFlowExtra<KotlinInt, Extra>
+public typealias ValueFlowInt = ValueFlow<KotlinInt>
+
+public typealias ValueFlowExtraLong<Extra: AnyObject> =
+    ValueFlowExtra<KotlinLong, Extra>
+public typealias ValueFlowLong = ValueFlow<KotlinLong>
+
+public typealias ValueFlowExtraString<Extra: AnyObject> =
+    ValueFlowExtra<NSString, Extra>
+public typealias ValueFlowString = ValueFlow<NSString>
+
+public typealias ValueFlowCollection =
+    ValueFlowCollectionExtra<EntityCollectionExtraParamsEmpty>
+
 public typealias SingleFlow<Id: AnyObject, Entity: AnyObject> =
     SingleFlowExtra<Id, Entity, EntityCollectionExtraParamsEmpty>
 

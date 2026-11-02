@@ -28,9 +28,7 @@ open class ArrayKeyFlowExtra<Id: Any, E: Entity<Id>, Extra>(
         this.entities.toList().forEach {
             val entity = entities[it.id]
             if (entity != null)
-            {
                 apply(entity = entity, operation = operation)
-            }
         }
     }
 
@@ -40,9 +38,7 @@ open class ArrayKeyFlowExtra<Id: Any, E: Entity<Id>, Extra>(
             val entity = entities[it.id]
             val operation = operations[it.id]
             if (entity != null && operation != null)
-            {
                 apply(entity = entity, operation = operation)
-            }
         }
     }
 
@@ -122,9 +118,7 @@ class ArrayKeyFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra
         fetch = fetch
     )
     {
-        scope.launch {
-            setEntities(entities = holder.requestForCombine(source = uuid, entities = initial))
-        }
+        scope.launch { setEntities(entities = holder.requestForCombine(source = uuid, entities = initial)) }
     }
 
     init
@@ -135,13 +129,9 @@ class ArrayKeyFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra
             .receiveAsFlow()
             .onEach {
                 if (it.ids.isEmpty())
-                {
                     updateLoading(Loading.None)
-                }
                 else
-                {
                     updateLoading(if (it.first) Loading.FirstLoading else Loading.Loading, null)
-                }
             }
             .mapLatest {
                 if (it.ids.isEmpty())
@@ -157,9 +147,7 @@ class ArrayKeyFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra
                     catch (throwable: Throwable)
                     {
                         if (throwable is CancellationException)
-                        {
                             throw throwable
-                        }
 
                         updateLoading(Loading.None, throwable)
                         listOf()
@@ -189,9 +177,7 @@ class ArrayKeyFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra
 
     override fun refresh(resetCache: Boolean, extra: Extra?)
     {
-        scope.launch {
-            refreshNow(resetCache = resetCache, extra = extra)
-        }
+        scope.launch { refreshNow(resetCache = resetCache, extra = extra) }
     }
 
     override suspend fun refreshNow(resetCache: Boolean, extra: Extra?)
@@ -222,14 +208,14 @@ class ArrayKeyFlowCollectionExtra<Id: Any, E: Entity<Id>, Extra, CollectionExtra
             return fetch(params)
 
         val existing = params.ids.mapNotNull { id ->
-            holder.sharedEntities[id] ?: entities.firstOrNull { it.id == id }
+            holder().sharedEntities[id] ?: entities.firstOrNull { it.id == id }
         }
 
         if (existing.size == params.ids.size)
             return existing
 
         val missingIds = params.ids.filter { id ->
-            holder.sharedEntities[id] == null && entities.firstOrNull { it.id == id } == null
+            holder().sharedEntities[id] == null && entities.firstOrNull { it.id == id } == null
         }
 
         val fetched = fetch(params.copy(ids = missingIds))

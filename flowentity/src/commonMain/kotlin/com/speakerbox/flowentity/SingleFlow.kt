@@ -38,18 +38,14 @@ open class SingleFlowExtra<Id: Any, E: Entity<Id>, Extra>(
     override fun update(source: String, entity: E)
     {
         if (id == entity.id && source != uuid)
-        {
             publish(entity)
-        }
     }
 
     override fun update(source: String, entities: Map<Id, E>)
     {
         val entity = entities[id]
         if (entity != null && source != uuid)
-        {
             publish(entity)
-        }
     }
 
     override fun update(entities: Map<Id, E>, operation: UpdateOperation)
@@ -97,9 +93,7 @@ open class SingleFlowExtra<Id: Any, E: Entity<Id>, Extra>(
     override fun delete(ids: Set<Id>)
     {
         if (ids.contains(id))
-        {
             clear()
-        }
     }
 
     override fun clear()

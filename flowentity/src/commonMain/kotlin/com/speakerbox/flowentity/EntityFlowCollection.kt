@@ -26,7 +26,7 @@ open class EntityFlowCollectionExtra<Id: Any, E: Entity<Id>, CollectionExtra>(
 )
 {
     protected val scope = CoroutineScope(SupervisorJob() + dispatcher)
-    protected val items = mutableListOf<EntityFlow<Id, E, *>>()
+    private val items = mutableListOf<FlowWeakReference<EntityFlow<Id, E, *>>>()
     protected val _sharedEntities = mutableMapOf<Id, E>()
     protected val combineSources = mutableListOf<CombineSource<E>>()
 
@@ -43,12 +43,15 @@ open class EntityFlowCollectionExtra<Id: Any, E: Entity<Id>, CollectionExtra>(
 
     internal fun add(flow: EntityFlow<Id, E, *>)
     {
-        items.add(flow)
+        items.add(FlowWeakReference(flow))
     }
 
     internal fun remove(flow: EntityFlow<Id, E, *>)
     {
-        items.removeAll { it === flow }
+        items.removeAll {
+            val value = it.get()
+            value == null || value === flow
+        }
     }
 
     open suspend fun requestForCombine(source: String, entity: E, updateChilds: Boolean = true): E
@@ -83,7 +86,7 @@ open class EntityFlowCollectionExtra<Id: Any, E: Entity<Id>, CollectionExtra>(
     open fun update(source: String = "", entity: E)
     {
         _sharedEntities[entity.id] = entity
-        items.toList().forEach { it.update(source = source, entity = entity) }
+        items.forEach { it.get()?.update(source = source, entity = entity) }
     }
 
     open fun update(source: String = "", entities: List<E>)
@@ -92,7 +95,7 @@ open class EntityFlowCollectionExtra<Id: Any, E: Entity<Id>, CollectionExtra>(
             _sharedEntities[it.id] = it
             it.id
         }
-        items.toList().forEach { it.update(source = source, entities = map) }
+        items.forEach { it.get()?.update(source = source, entities = map) }
     }
 
     open fun commit(entity: E, operation: UpdateOperation)
@@ -104,7 +107,7 @@ open class EntityFlowCollectionExtra<Id: Any, E: Entity<Id>, CollectionExtra>(
             else ->
             {
                 _sharedEntities[entity.id] = entity
-                items.toList().forEach { it.update(entity = entity, operation = operation) }
+                items.forEach { it.get()?.update(entity = entity, operation = operation) }
             }
         }
     }
@@ -117,17 +120,13 @@ open class EntityFlowCollectionExtra<Id: Any, E: Entity<Id>, CollectionExtra>(
             UpdateOperation.Clear -> commitClear()
             else ->
             {
-                val fetch = requireNotNull(singleFetchCallback) {
-                    "To commit by id you must specify singleFetchCallback before"
-                }
+                val fetch = requireNotNull(singleFetchCallback) { "To commit by id you must specify singleFetchCallback before" }
 
                 scope.launch {
                     val params = SingleParams<Id, E, EntityCollectionExtraParamsEmpty, CollectionExtra>(id = id)
                     val entity = fetch(params)
                     if (entity != null)
-                    {
                         commit(entity = requestForCombine(source = "", entity = entity, updateChilds = false), operation = operation)
-                    }
                 }
             }
         }
@@ -140,7 +139,7 @@ open class EntityFlowCollectionExtra<Id: Any, E: Entity<Id>, CollectionExtra>(
         {
             val new = changes(entity)
             _sharedEntities[id] = new
-            items.toList().forEach { it.update(entity = new, operation = UpdateOperation.Update) }
+            items.forEach { it.get()?.update(entity = new, operation = UpdateOperation.Update) }
         }
     }
 
@@ -158,7 +157,7 @@ open class EntityFlowCollectionExtra<Id: Any, E: Entity<Id>, CollectionExtra>(
                     _sharedEntities[it.id] = it
                 }
 
-                items.toList().forEach { it.update(entities = forUpdate, operation = operation) }
+                items.forEach { it.get()?.update(entities = forUpdate, operation = operation) }
             }
         }
     }
@@ -172,6 +171,7 @@ open class EntityFlowCollectionExtra<Id: Any, E: Entity<Id>, CollectionExtra>(
             .filterIndexed { index, _ -> operations.getOrNull(index) == UpdateOperation.Delete }
             .map { it.id }
             .toSet()
+
         val otherEntities = entities.filterIndexed { index, _ -> operations.getOrNull(index) != UpdateOperation.Delete }
         val otherOperations = operations.filter { it != UpdateOperation.Delete }
 
@@ -179,13 +179,14 @@ open class EntityFlowCollectionExtra<Id: Any, E: Entity<Id>, CollectionExtra>(
 
         val forUpdate = mutableMapOf<Id, E>()
         val operationUpdate = mutableMapOf<Id, UpdateOperation>()
+
         otherEntities.forEachIndexed { index, entity ->
             forUpdate[entity.id] = entity
             operationUpdate[entity.id] = otherOperations.getOrElse(index) { UpdateOperation.None }
             _sharedEntities[entity.id] = entity
         }
 
-        items.toList().forEach { it.update(entities = forUpdate, operations = operationUpdate) }
+        items.forEach { it.get()?.update(entities = forUpdate, operations = operationUpdate) }
     }
 
     open fun commitByIds(ids: List<Id>, operation: UpdateOperation)
@@ -218,14 +219,13 @@ open class EntityFlowCollectionExtra<Id: Any, E: Entity<Id>, CollectionExtra>(
         val deleteIds = ids
             .filterIndexed { index, _ -> operations.getOrNull(index) == UpdateOperation.Delete }
             .toSet()
+
         val otherIds = ids.filterIndexed { index, _ -> operations.getOrNull(index) != UpdateOperation.Delete }
         val otherOperations = operations.filter { it != UpdateOperation.Delete }
 
         commitDeleteByIds(ids = deleteIds)
 
-        val fetch = requireNotNull(arrayFetchCallback) {
-            "To commit by ids you must specify arrayFetchCallback before"
-        }
+        val fetch = requireNotNull(arrayFetchCallback) { "To commit by ids you must specify arrayFetchCallback before" }
 
         scope.launch {
             val params = KeyParams<Id, EntityCollectionExtraParamsEmpty, CollectionExtra>(ids = otherIds)
@@ -248,19 +248,19 @@ open class EntityFlowCollectionExtra<Id: Any, E: Entity<Id>, CollectionExtra>(
             }
         }
 
-        items.toList().forEach { it.update(entities = forUpdate, operation = UpdateOperation.Update) }
+        items.forEach { it.get()?.update(entities = forUpdate, operation = UpdateOperation.Update) }
     }
 
     open fun commitDeleteByIds(ids: Set<Id>)
     {
         ids.forEach { _sharedEntities.remove(it) }
-        items.toList().forEach { it.delete(ids = ids) }
+        items.forEach { it.get()?.delete(ids = ids) }
     }
 
     open fun commitClear()
     {
         _sharedEntities.clear()
-        items.toList().forEach { it.clear() }
+        items.forEach { it.get()?.clear() }
     }
 
     fun refresh(resetCache: Boolean = false, collectionExtra: CollectionExtra? = null)
@@ -273,7 +273,7 @@ open class EntityFlowCollectionExtra<Id: Any, E: Entity<Id>, CollectionExtra>(
     suspend fun refreshNow(resetCache: Boolean = false, collectionExtra: CollectionExtra? = null)
     {
         this.collectionExtra = collectionExtra ?: this.collectionExtra
-        items.toList().forEach { it.refreshData(resetCache = resetCache, data = this.collectionExtra) }
+        items.forEach { it.get()?.refreshData(resetCache = resetCache, data = this.collectionExtra) }
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -509,7 +509,7 @@ open class EntityFlowCollectionExtra<Id: Any, E: Entity<Id>, CollectionExtra>(
 
     fun close()
     {
-        items.toList().forEach { it.dispose() }
+        items.toList().forEach { it.get()?.dispose() }
         scope.cancel()
     }
 
@@ -551,9 +551,7 @@ open class EntityFlowCollectionExtra<Id: Any, E: Entity<Id>, CollectionExtra>(
         }
 
         if (toUpdate.isNotEmpty())
-        {
-            items.toList().forEach { it.update(source = "", entities = toUpdate) }
-        }
+            items.forEach { it.get()?.update(source = "", entities = toUpdate) }
     }
 
     private fun CombineSource<E>.asFlow(): Flow<Pair<CombineMethod<E>, List<Any?>>>
@@ -633,17 +631,13 @@ open class EntityFlowCollectionExtra<Id: Any, E: Entity<Id>, CollectionExtra>(
     }
 }
 
-typealias EntityFlowCollection<Id, Entity> =
-    EntityFlowCollectionExtra<Id, Entity, EntityCollectionExtraParamsEmpty>
+typealias EntityFlowCollection<Id, Entity> = EntityFlowCollectionExtra<Id, Entity, EntityCollectionExtraParamsEmpty>
 
-typealias EntityFlowCollectionExtraInt<Entity, CollectionExtra> =
-    EntityFlowCollectionExtra<Int, Entity, CollectionExtra>
+typealias EntityFlowCollectionExtraInt<Entity, CollectionExtra> = EntityFlowCollectionExtra<Int, Entity, CollectionExtra>
 typealias EntityFlowCollectionInt<Entity> = EntityFlowCollection<Int, Entity>
 
-typealias EntityFlowCollectionExtraLong<Entity, CollectionExtra> =
-    EntityFlowCollectionExtra<Long, Entity, CollectionExtra>
+typealias EntityFlowCollectionExtraLong<Entity, CollectionExtra> = EntityFlowCollectionExtra<Long, Entity, CollectionExtra>
 typealias EntityFlowCollectionLong<Entity> = EntityFlowCollection<Long, Entity>
 
-typealias EntityFlowCollectionExtraString<Entity, CollectionExtra> =
-    EntityFlowCollectionExtra<String, Entity, CollectionExtra>
+typealias EntityFlowCollectionExtraString<Entity, CollectionExtra> = EntityFlowCollectionExtra<String, Entity, CollectionExtra>
 typealias EntityFlowCollectionString<Entity> = EntityFlowCollection<String, Entity>
